@@ -56,7 +56,6 @@ type ClassifyBookResponse struct {
 var page *Page
 
 func VerifyDatabase(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	databaseSetup()
 	if err := db.Ping(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -81,7 +80,7 @@ func VerifyLogin(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) 
 
 func main() {
 	mux := http.NewServeMux()
-
+	databaseSetup()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var books []Book
 		user := sessions.GetSession(r).Get("user")
