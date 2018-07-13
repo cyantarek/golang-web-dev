@@ -84,12 +84,14 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var books []Book
 		user := sessions.GetSession(r).Get("user")
-		data, _ := db.Query("select pk, title, author, classification from books where books.user = ?", user)
+		data, err := db.Query("select pk, title, author, classification from books where books.user = ?", user)
 
-		for data.Next() {
-			var book Book
-			data.Scan(&book.PK, &book.Title, &book.Author, &book.Classification)
-			books = append(books, book)
+		if err == nil {
+			for data.Next() {
+				var book Book
+				data.Scan(&book.PK, &book.Title, &book.Author, &book.Classification)
+				books = append(books, book)
+			}
 		}
 
 		tpl := template.Must(template.ParseFiles("templates/index.html"))
