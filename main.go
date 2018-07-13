@@ -182,8 +182,8 @@ func main() {
 
 	ng := negroni.Classic()
 	ng.Use(sessions.Sessions("go-for-web-dev", cookiestore.New([]byte("my-secret"))))
-	ng.Use(negroni.HandlerFunc(VerifyLogin))
 	ng.Use(negroni.HandlerFunc(VerifyDatabase))
+	ng.Use(negroni.HandlerFunc(VerifyLogin))
 	ng.UseHandler(mux)
 
 	//http.ListenAndServe(":8000", ng)
