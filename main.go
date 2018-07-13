@@ -95,29 +95,61 @@ func main() {
 		}
 
 		tpl := template.Must(template.ParseFiles("templates/index.html"))
-		tpl.Execute(w, books)
+		err = tpl.Execute(w, books)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
 	})
 
 	mux.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.FormValue("search")
-		xmlData, _ := http.Get("http://classify.oclc.org/classify2/Classify?&summary=true&title=" + url.QueryEscape(query))
-		body, _ := ioutil.ReadAll(xmlData.Body)
+		xmlData, err := http.Get("http://classify.oclc.org/classify2/Classify?&summary=true&title=" + url.QueryEscape(query))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		body, err := ioutil.ReadAll(xmlData.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		var c ClassifyResponse
-		xml.Unmarshal(body, &c)
-		json.NewEncoder(w).Encode(c.Result)
+		err = xml.Unmarshal(body, &c)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		err = json.NewEncoder(w).Encode(c.Result)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	mux.HandleFunc("/books/add", func(w http.ResponseWriter, r *http.Request) {
 		id := r.FormValue("id")
-		xmlData, _ := http.Get("http://classify.oclc.org/classify2/Classify?&summary=true&owi=" + url.QueryEscape(id))
-		data, _ := ioutil.ReadAll(xmlData.Body)
+		xmlData, err := http.Get("http://classify.oclc.org/classify2/Classify?&summary=true&owi=" + url.QueryEscape(id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		data, err := ioutil.ReadAll(xmlData.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		user := sessions.GetSession(r).Get("user")
 		var c ClassifyBookResponse
-		xml.Unmarshal(data, &c)
-		result, _ := db.Exec("INSERT into books(title, author, id, classification, user) values (?, ?, ?, ?, ?)", c.BookData.Title, c.BookData.Author, c.BookData.ID, c.Classification.MostPopular, user)
+		err = xml.Unmarshal(data, &c)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		result, err := db.Exec("INSERT into books(title, author, id, classification, user) values (?, ?, ?, ?, ?)", c.BookData.Title, c.BookData.Author, c.BookData.ID, c.Classification.MostPopular, user)
 
-		pk, _ := result.LastInsertId()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		pk, err := result.LastInsertId()
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
 		var book = Book{
 			PK:             strconv.Itoa(int(pk)),
@@ -125,12 +157,18 @@ func main() {
 			Author:         c.BookData.Author,
 			Classification: c.Classification.MostPopular,
 		}
-		json.NewEncoder(w).Encode(book)
+		err = json.NewEncoder(w).Encode(book)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	mux.HandleFunc("/books/delete", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
-		db.Exec("delete from books where pk = ?", id)
+		_, err := db.Exec("delete from books where pk = ?", id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -138,7 +176,10 @@ func main() {
 		query := r.FormValue("sortBy")
 
 		var books []Book
-		data, _ := db.Query("select pk, title, author, classification from books order by " + query)
+		data, err := db.Query("select pk, title, author, classification from books order by " + query)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 
 		for data.Next() {
 			var book Book
@@ -146,10 +187,11 @@ func main() {
 			books = append(books, book)
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Printf("%T", query)
-		fmt.Println(sessions.GetSession(r).Get("sort-by"))
 		sessions.GetSession(r).Set("sort-by", query)
-		json.NewEncoder(w).Encode(books)
+		err = json.NewEncoder(w).Encode(books)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +202,14 @@ func main() {
 			if s.Valid {
 				http.Redirect(w, r, "/auth/login", http.StatusFound)
 			} else {
-				secret, _ := bcrypt.GenerateFromPassword([]byte(r.FormValue("password")), bcrypt.DefaultCost)
-				db.Exec("insert into users(username, secret) values (?, ?)", r.FormValue("username"), secret)
+				secret, err := bcrypt.GenerateFromPassword([]byte(r.FormValue("password")), bcrypt.DefaultCost)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+				_, err = db.Exec("insert into users(username, secret) values (?, ?)", r.FormValue("username"), secret)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
 				sessions.GetSession(r).Set("user", r.FormValue("username"))
 				http.Redirect(w, r, "/", http.StatusFound)
 			}
@@ -178,7 +226,10 @@ func main() {
 			}
 		}
 		tpl := template.Must(template.ParseFiles("templates/login.html"))
-		tpl.Execute(w, nil)
+		err := tpl.Execute(w, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	ng := negroni.Classic()
