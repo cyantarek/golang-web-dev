@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="page-switcher">
+    <button onclick="showViewPage()">View Library</button>
+    <button onclick="showSearchPage()">Add Books</button>
+</div>
+<div id="search-page" style="display: none">
+    <form action="" id="search-form" onsubmit="return false">
+        <input type="text" name="search" placeholder="Book title...">
+        <input type="submit" value="Search" onclick="submitSearch()">
+    </form>
+    <br>
+    <table width="100%" style="display: none" id="result-table">
+        <thead>
+        <tr style="text-align: left">
+            <th width="40%">Title</th>
+            <th width="30%">Author</th>
+            <th width="10%">Year</th>
+            <th width="20%">ID</th>
+        </tr>
+        </thead>
+        <tbody id="search-results"></tbody>
+    </table>
+    <div id="loading" style="display: none"><h1>Loading...</h1>
+        <h3>Speed depends on network bandwidth</h3></div>
+    <div id="message"><h1>Type your favorite book title in the search bar</h1></div>
+    <div id="message2" style="display: none"><h1>Click on the book you like to add to your collection</h1></div>
+</div>
+
+<div id="view-page">
+    <table width="100%">
+        <thead>
+        <tr style="text-align: left">
+            <th width="45%" onclick="sortBooks('title')">Title</th>
+            <th width="35%" onclick="sortBooks('author')">Author</th>
+            <th width="15%" onclick="sortBooks('classification')">Classification</th>
+            <th width="5%">Action</th>
+        </tr>
+        </thead>
+        <tbody id="view-results">
+        {{range .}}
+        <tr id="book-row-{{.PK}}">
+            <td>{{.Title}}</td>
+            <td>{{.Author}}</td>
+            <td>{{.Classification}}</td>
+            <td><button onclick="deleteBook({{.PK}})" class="delete-btn">Delete</button></td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<script type="text/javascript">
+    function submitSearch() {
+        $.ajax({
+            url: "/search",
+            method: "POST",
+            data: $("#search-form").serialize(),
+            beforeSend: function () {
+                $("#search-results").html('');
+                $("#message").hide();
+                $("#message2").hide();
+                $("#loading").show();
+            },
+            complete: function () {
+                $("#loading").hide();
+            },
+            success: function (data) {
+                var parsedData = JSON.parse(data);
+                parsedData.forEach(function (result) {
+                    var row = $("<tr><td>" + result.Title + "</td><td>" + result.Author + "</td><td>" + result.Year + "</td><td>" + result.ID + "</td></tr>")
+                    $("#search-results").append(row);
+                    row.on("click", function () {
+                        $.ajax({
+                            url: "/books/add?id=" + result.ID,
+                            method: "GET",
+                            success: function (data) {
+                                console.log(data);
+                                var parsedData = JSON.parse(data);
+                                var row = $("<tr id='book-row-" + parsedData.PK + "'><td>" + parsedData.Title + "</td><td>" + parsedData.Author + "</td><td>" + parsedData.Classification + "</td><td><button class='delete-btn' onclick='deleteBook(" + parsedData.PK + ")'>Delete</button></td></tr>")
+                                $("#view-results").append(row)
+                            }
+                        })
+                    })
+                    $("#result-table").show();
+                    $("#message2").show();
+                })
+            }
+        });
+        return false;
+    }
+
+    function showSearchPage() {
+        $("#search-page").show();
+        $("#view-page").hide()
+    }
+
+    function showViewPage() {
+        $("#search-page").hide();
+        $("#view-page").show()
+    }
+
+    function deleteBook(pk) {
+        $.ajax({
+            url: "/books/delete?id=" + pk,
+            method: "GET",
+            success: function () {
+                $("#book-row-" + pk).remove();
+            }
+        });
+    }
+
+    function sortBooks(columnName) {
+        $.ajax({
+            method: "GET",
+            url: "/books?sortBy=" + columnName,
+            success: function (data) {
+                console.log(data);
+                var books = JSON.parse(data);
+                console.log(books);
+                $("#view-results").empty();
+
+                books.forEach(function (result) {
+                    var row = $("<tr id='book-row-" + result.PK + "'><td>" + result.Title + "</td><td>" + result.Author + "</td><td>" + result.Classification + "</td><td><button class='delete-btn' onclick='deleteBook(" + result.PK + ")'>Delete</button></td></tr>")
+                    $("#view-results").append(row)
+                })
+            }
+        })
+    }
+</script>
+</body>
+</html>
+<style>
+    tr:hover {
+        background-color: lightgray;
+        cursor: pointer;
+    }
+
+    #view-page th:hover {
+        background-color: lightgray;
+        cursor: pointer;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2
+    }
+
+    th {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    table, th, td {
+        border: 1px solid gray;
+    }
+
+    #page-switcher {
+        width: 100%;
+        text-align: center;
+    }
+
+    #page-switcher button {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 1em;
+        padding: .3em;
+    }
+
+    .delete-btn {
+        color: white;
+        background-color: #d9534f;
+        border-color: #d43f3a;
+        border-radius: 8px;
+    }
+</style>
