@@ -191,7 +191,17 @@ func main() {
 }
 
 func databaseSetup() {
-	db, _ = sql.Open("sqlite3", "book.db")
-	db.Exec("CREATE TABLE IF NOT EXISTS books(pk integer primary key AUTOINCREMENT, title text, author text, id text, classification text)")
-	db.Exec("CREATE TABLE IF NOT EXISTS users(pk integer primary key AUTOINCREMENT, username text, secret text)")
+	var err error
+	db, err = sql.Open("sqlite3", "book.db")
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS books(pk integer primary key AUTOINCREMENT, title text, author text, id text, classification text)")
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS users(pk integer primary key AUTOINCREMENT, username text, secret text)")
+	if err != nil {
+		fmt.Println(err)
+	}
 }
