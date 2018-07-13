@@ -127,28 +127,38 @@ func main() {
 		id := r.FormValue("id")
 		xmlData, err := http.Get("http://classify.oclc.org/classify2/Classify?&summary=true&owi=" + url.QueryEscape(id))
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		data, err := ioutil.ReadAll(xmlData.Body)
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		user := sessions.GetSession(r).Get("user")
 		var c ClassifyBookResponse
 		err = xml.Unmarshal(data, &c)
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		result, err := db.Exec("INSERT into books(title, author, id, classification, user) values (?, ?, ?, ?, ?)", c.BookData.Title, c.BookData.Author, c.BookData.ID, c.Classification.MostPopular, user)
 
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		pk, err := result.LastInsertId()
 
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		var book = Book{
@@ -159,7 +169,9 @@ func main() {
 		}
 		err = json.NewEncoder(w).Encode(book)
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	})
 
@@ -178,7 +190,9 @@ func main() {
 		var books []Book
 		data, err := db.Query("select pk, title, author, classification from books order by " + query)
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		for data.Next() {
@@ -248,7 +262,7 @@ func databaseSetup() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS books(pk integer primary key AUTOINCREMENT, title text, author text, id text, classification text)")
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS books(pk integer primary key AUTOINCREMENT, title text, author text, id text, classification text, user text)")
 	if err != nil {
 		fmt.Println(err)
 	}
